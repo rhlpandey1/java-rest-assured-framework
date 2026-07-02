@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="REST E2E Suite" parallel="methods" thread-count="4" verbose="1">
+
+    <listeners>
+        <listener class-name="com.automation.framework.listeners.RetryListener"/>
+        <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
+    </listeners>
+
+    <test name="Users API Tests">
+        <classes>
+            <class name="com.automation.tests.users.UsersApiTest"/>
+        </classes>
+    </test>
+
+</suite>

@@ -1,0 +1,96 @@
+name: REST E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options: [ dev, staging, prod ]
+
+jobs:
+  test:
+    name: API tests (${{ matrix.env }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [ dev, staging, prod ]
+
+    env:
+      ENV: ${{ matrix.env }}
+      STAGING_BEARER_TOKEN: ${{ secrets.STAGING_BEARER_TOKEN }}
+      STAGING_OAUTH_CLIENT_ID: ${{ secrets.STAGING_OAUTH_CLIENT_ID }}
+      STAGING_OAUTH_CLIENT_SECRET: ${{ secrets.STAGING_OAUTH_CLIENT_SECRET }}
+      STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+      PROD_BEARER_TOKEN: ${{ secrets.PROD_BEARER_TOKEN }}
+      PROD_OAUTH_CLIENT_ID: ${{ secrets.PROD_OAUTH_CLIENT_ID }}
+      PROD_OAUTH_CLIENT_SECRET: ${{ secrets.PROD_OAUTH_CLIENT_SECRET }}
+      PROD_API_KEY: ${{ secrets.PROD_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Run REST Assured tests
+        run: ./gradlew clean test -Denv=${{ matrix.env }} --no-daemon
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.env }}
+          path: build/allure-results
+          retention-days: 14
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-${{ matrix.env }}
+          path: build/reports/allure-report
+          retention-days: 14
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.env }}
+          path: build/logs
+          retention-days: 7
+
+  publish-report:
+    name: Publish Allure report (dev)
+    runs-on: ubuntu-latest
+    needs: test
+    if: always() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Download Allure results (dev)
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-dev
+          path: allure-results
+
+      - name: Deploy Allure to GitHub Pages
+        uses: simple-elf/allure-report-action@v1.9
+        with:
+          allure_results: allure-results
+          gh_pages: gh-pages
+          allure_history: allure-history
+          keep_reports: 20

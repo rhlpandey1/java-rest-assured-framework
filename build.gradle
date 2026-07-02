@@ -1,0 +1,138 @@
+plugins {
+    id 'java'
+    id 'com.google.protobuf' version '0.10.0'
+}
+
+group = 'com.automation'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    restAssuredVersion = '5.5.0'
+    testNgVersion = '7.10.2'
+    allureVersion = '2.29.0'
+    jacksonVersion = '2.18.1'
+    lombokVersion = '1.18.34'
+    log4jVersion = '2.24.1'
+    slf4jVersion = '2.0.16'
+    awaitilityVersion = '4.2.2'
+    aspectjVersion = '1.9.22.1'
+    protobufVersion = '4.28.3'
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+}
+
+configurations {
+    aspectjAgent
+}
+
+dependencies {
+    aspectjAgent "org.aspectj:aspectjweaver:${aspectjVersion}"
+    // ---- REST Assured (core + json-schema-validator) ----
+    implementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+    implementation "io.rest-assured:json-schema-validator:${restAssuredVersion}"
+    implementation "io.rest-assured:json-path:${restAssuredVersion}"
+    implementation "io.rest-assured:xml-path:${restAssuredVersion}"
+
+    // ---- TestNG ----
+    implementation "org.testng:testng:${testNgVersion}"
+
+    // ---- Allure reporting ----
+    implementation "io.qameta.allure:allure-testng:${allureVersion}"
+    implementation "io.qameta.allure:allure-rest-assured:${allureVersion}"
+    implementation "io.qameta.allure:allure-attachments:${allureVersion}"
+
+    // ---- POJO / JSON ----
+    //   Protobuf: canonical contract types (see src/main/proto/*.proto)
+    //   Lombok  : framework-internal POJOs (e.g. ErrorResponse) where proto is too rigid
+    //   Jackson : used by Lombok POJOs and as REST Assured's default ObjectMapper
+    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    implementation "com.google.protobuf:protobuf-java-util:${protobufVersion}"
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
+
+    // ---- Logging (Log4j2 + SLF4J) ----
+    implementation "org.apache.logging.log4j:log4j-api:${log4jVersion}"
+    implementation "org.apache.logging.log4j:log4j-core:${log4jVersion}"
+    implementation "org.apache.logging.log4j:log4j-slf4j2-impl:${log4jVersion}"
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+
+    // ---- Assertions ----
+    implementation 'org.assertj:assertj-core:3.26.3'
+    implementation 'org.hamcrest:hamcrest:3.0'
+
+    // ---- Utilities ----
+    implementation 'org.apache.commons:commons-lang3:3.17.0'
+    implementation "org.awaitility:awaitility:${awaitilityVersion}"
+    implementation 'com.github.javafaker:javafaker:1.0.2'
+
+    // ---- Test scope mirrors ----
+    testImplementation "org.testng:testng:${testNgVersion}"
+    testImplementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+    testImplementation "io.qameta.allure:allure-testng:${allureVersion}"
+}
+
+test {
+    useTestNG() {
+        useDefaultListeners = false
+        suites file('src/test/resources/testng.xml')
+    }
+
+    // Wire AspectJ weaver so @Step annotations are intercepted at runtime
+    jvmArgs "-javaagent:${configurations.aspectjAgent.singleFile}"
+
+    // Allure system properties
+    systemProperty 'allure.results.directory', "${layout.buildDirectory.get().asFile}/allure-results"
+    systemProperty 'env', System.getProperty('env', 'dev')
+    systemProperty 'file.encoding', 'UTF-8'
+
+    // JVM options
+    maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+    testLogging {
+        events 'started', 'passed', 'skipped', 'failed'
+        exceptionFormat = 'full'
+        showStandardStreams = false
+    }
+}
+
+// Generate Allure HTML report from results (requires `allure` CLI on PATH or installed via brew/choco).
+// Usage: ./gradlew allureReport ; ./gradlew allureServe
+tasks.register('allureReport', Exec) {
+    description = 'Generate static Allure HTML report into build/reports/allure-report'
+    group = 'verification'
+    workingDir = projectDir
+    def results = file("${layout.buildDirectory.get().asFile}/allure-results")
+    def out = file("${layout.buildDirectory.get().asFile}/reports/allure-report")
+    commandLine 'allure', 'generate', results.absolutePath, '-o', out.absolutePath, '--clean'
+    onlyIf { results.exists() }
+}
+
+tasks.register('allureServe', Exec) {
+    description = 'Open the Allure report in a local browser session'
+    group = 'verification'
+    workingDir = projectDir
+    commandLine 'allure', 'serve', "${layout.buildDirectory.get().asFile}/allure-results"
+}
+
+tasks.register('printEnv') {
+    doLast {
+        println "Resolved env = ${System.getProperty('env', 'dev')}"
+    }
+}

@@ -1,0 +1,33 @@
+services:
+  api-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: my-rest-fw:latest
+    container_name: my-rest-fw
+    environment:
+      ENV: ${ENV:-dev}
+      STAGING_BEARER_TOKEN: ${STAGING_BEARER_TOKEN:-}
+      STAGING_OAUTH_CLIENT_ID: ${STAGING_OAUTH_CLIENT_ID:-}
+      STAGING_OAUTH_CLIENT_SECRET: ${STAGING_OAUTH_CLIENT_SECRET:-}
+      STAGING_API_KEY: ${STAGING_API_KEY:-}
+    volumes:
+      - ./build:/workspace/build
+    command: >
+      clean test
+      -Denv=${ENV:-dev}
+      --no-daemon
+
+  allure-report:
+    image: frankescobar/allure-docker-service:latest
+    container_name: allure-report
+    ports:
+      - "5050:5050"
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: 3
+      KEEP_HISTORY: 1
+    volumes:
+      - ./build/allure-results:/app/allure-results
+      - ./build/allure-reports:/app/default-reports
+    depends_on:
+      - api-tests

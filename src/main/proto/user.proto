@@ -1,0 +1,23 @@
+// Canonical contract for the User resource.
+// Shared between the gRPC service implementation and the REST E2E test suite —
+// proto is the single source of truth for shape and field semantics.
+syntax = "proto3";
+
+package com.automation.framework.contracts.v1;
+
+option java_package = "com.automation.framework.contracts.v1";
+option java_multiple_files = true;
+option java_outer_classname = "UserProto";
+
+message User {
+  int64  id    = 1;
+  string name  = 2;
+  string email = 3;
+  string phone = 4;
+  string role  = 5;
+}
+
+// Wrapper used by list endpoints (e.g. GET /users).
+message UserList {
+  repeated User users = 1;
+}

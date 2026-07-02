@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UsersList",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "email"],
+    "properties": {
+      "id":    { "type": ["integer", "string"] },
+      "name":  { "type": "string" },
+      "email": { "type": "string" }
+    },
+    "additionalProperties": true
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ErrorResponse",
+  "type": "object",
+  "properties": {
+    "status":    { "type": ["integer", "string"] },
+    "error":     { "type": ["string", "null"] },
+    "message":   { "type": ["string", "null"] },
+    "path":      { "type": ["string", "null"] },
+    "timestamp": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}
