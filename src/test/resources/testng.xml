@@ -10,6 +10,7 @@
     <test name="Users API Tests">
         <classes>
             <class name="com.automation.tests.users.UsersApiTest"/>
+            <class name="com.automation.tests.users.E2ERestAssuredDemoTest"/>
         </classes>
     </test>
 
