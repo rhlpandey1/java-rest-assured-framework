@@ -19,5 +19,11 @@
 
         </classes>
     </test>
+<!--    <test name="Java Rest Assured vs pytest request comparison">-->
+<!--        <classes>-->
+<!--            <class name="com.automation.tests.javaVpython.BookingCrudE2ETest"/>-->
+
+<!--        </classes>-->
+<!--    </test>-->
 
 </suite>
