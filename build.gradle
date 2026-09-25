@@ -27,6 +27,7 @@ ext {
     awaitilityVersion = '4.2.2'
     aspectjVersion = '1.9.22.1'
     protobufVersion = '4.28.3'
+    springKafkaVersion = '4.1.1'
 }
 
 protobuf {
@@ -81,12 +82,18 @@ dependencies {
     // ---- Utilities ----
     implementation 'org.apache.commons:commons-lang3:3.17.0'
     implementation "org.awaitility:awaitility:${awaitilityVersion}"
-    implementation 'com.github.javafaker:javafaker:1.0.2'
+    //implementation 'com.github.javafaker:javafaker:1.0.2'
+    implementation('com.github.javafaker:javafaker:1.0.2') {
+        exclude group: 'org.yaml', module: 'snakeyaml'
+    }
 
     // ---- Test scope mirrors ----
     testImplementation "org.testng:testng:${testNgVersion}"
     testImplementation "io.rest-assured:rest-assured:${restAssuredVersion}"
     testImplementation "io.qameta.allure:allure-testng:${allureVersion}"
+    //----------Kafka testing--------------//
+    testImplementation "org.springframework.kafka:spring-kafka-test:${springKafkaVersion}"
+    testImplementation "org.apache.kafka:kafka-clients:4.0.0"
 }
 
 test {

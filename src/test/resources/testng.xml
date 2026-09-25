@@ -13,5 +13,11 @@
             <class name="com.automation.tests.users.E2ERestAssuredDemoTest"/>
         </classes>
     </test>
+    <test name="Kafka Tests">
+        <classes>
+            <class name="com.automation.tests.kafka.KafkaAsyncTest"/>
+
+        </classes>
+    </test>
 
 </suite>

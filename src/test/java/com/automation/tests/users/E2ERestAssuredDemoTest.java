@@ -74,8 +74,8 @@ public class E2ERestAssuredDemoTest {
                         .statusCode(200)
                         .extract()
                         .response();
-
-
+        String strResp=response.asString();
+        System.out.println(strResp);
         // Print complete response
         response.prettyPrint();
 
@@ -85,7 +85,7 @@ public class E2ERestAssuredDemoTest {
         // ========================================================
 
         JsonPath jsonPath = response.jsonPath();
-
+        //JsonPath jsonPath1 =new JsonPath(strResp);
 
         /*
          * Actual response looks similar to:

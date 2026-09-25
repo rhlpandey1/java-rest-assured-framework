@@ -13,6 +13,8 @@ import org.apache.logging.log4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.restassured.RestAssured.*;
+
 /**
  * Thin, fluent wrapper over REST Assured. Use {@link #builder(RequestSpecification)}
  * to construct a request; auth can be injected with {@link Builder#withAuth(AuthProvider)}.
@@ -39,7 +41,7 @@ public final class ApiClient {
         private String contentType = "application/json";
 
         private Builder(RequestSpecification baseSpec) {
-            this.spec = io.restassured.RestAssured.given().spec(baseSpec);
+            this.spec = given().spec(baseSpec);
         }
 
         public Builder withAuth(AuthProvider provider) {
