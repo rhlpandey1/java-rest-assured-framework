@@ -94,6 +94,12 @@ dependencies {
     //----------Kafka testing--------------//
     testImplementation "org.springframework.kafka:spring-kafka-test:${springKafkaVersion}"
     testImplementation "org.apache.kafka:kafka-clients:4.0.0"
+    testImplementation 'org.wiremock:wiremock-standalone:3.13.1'
+
+    testImplementation 'org.apache.httpcomponents.client5:httpclient5:5.4.1'
+    testImplementation 'au.com.dius.pact.consumer:junit5:4.7.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+
 }
 
 test {
@@ -117,6 +123,7 @@ test {
         exceptionFormat = 'full'
         showStandardStreams = false
     }
+    useJUnitPlatform()
 }
 
 // Generate Allure HTML report from results (requires `allure` CLI on PATH or installed via brew/choco).
@@ -141,5 +148,11 @@ tasks.register('allureServe', Exec) {
 tasks.register('printEnv') {
     doLast {
         println "Resolved env = ${System.getProperty('env', 'dev')}"
+    }
+}
+tasks.withType(Test).configureEach {
+    testLogging {
+        showStandardStreams = true
+        events "passed", "skipped", "failed"
     }
 }

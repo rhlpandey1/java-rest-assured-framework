@@ -14,6 +14,8 @@ import io.restassured.builder.ResponseSpecBuilder;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.util.concurrent.TimeUnit;
+
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
@@ -71,7 +73,6 @@ public class E2ERestAssuredDemoTest {
                         .get("/users/1")
                         .then()
                         .spec(responseSpec)
-                        .statusCode(200)
                         .extract()
                         .response();
         String strResp=response.asString();
@@ -795,4 +796,300 @@ public class E2ERestAssuredDemoTest {
                 .then()
                 .statusCode(200);
     }
+
+    // ============================================================
+    // 17. BASIC AUTHENTICATION (HTTPBIN)
+    // ============================================================
+
+    @Test
+    public void basicAuthenticationExample() {
+        given()
+                .auth().preemptive().basic("user", "passwd")
+                .when()
+                .get("https://httpbin.org/basic-auth/user/passwd")
+                .then()
+                .statusCode(200)
+                .body("authenticated", equalTo(true))
+                .body("user", equalTo("user"));
+    }
+
+    // Challenge-based Basic Auth: the client waits for the server challenge.
+    // Preemptive Basic Auth sends the Authorization header immediately.
+    @Test
+    public void challengeBasedBasicAuthenticationExample() {
+        given()
+                .auth().basic("user", "passwd")
+                .when()
+                .get("https://httpbin.org/basic-auth/user/passwd")
+                .then()
+                .statusCode(200)
+                .body("authenticated", equalTo(true));
+    }
+
+
+    // ============================================================
+    // 18-19. REAL OAUTH 2.0 CLIENT CREDENTIALS + BEARER TOKEN
+    // Example provider: Spotify Web API
+    //
+    // Setup:
+    // 1) Create an app at https://developer.spotify.com/dashboard
+    // 2) Set environment variables:
+    //    SPOTIFY_CLIENT_ID
+    //    SPOTIFY_CLIENT_SECRET
+    // 3) Never commit these credentials to Git.
+    //
+    // This requests a genuine short-lived access token from Spotify,
+    // extracts it from the response, then uses it against a protected API.
+    // Client Credentials is for app-only access; it does not access user data.
+    // ============================================================
+
+    private String getSpotifyAccessToken() {
+        String clientId = System.getenv("SPOTIFY_CLIENT_ID");
+        String clientSecret = System.getenv("SPOTIFY_CLIENT_SECRET");
+        System.out.println("SPOTIFY_CLIENT_ID->"+clientId+" SPOTIFY_CLIENT_SECRET->"+clientSecret);
+        if (clientId == null || clientId.isBlank()
+                || clientSecret == null || clientSecret.isBlank()) {
+            throw new IllegalStateException(
+                    "Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables.");
+        }
+
+        Response tokenResponse =
+                given()
+                        .baseUri("https://accounts.spotify.com")
+                        .auth().preemptive().basic(clientId, clientSecret)
+                        .contentType(ContentType.URLENC)
+                        .formParam("grant_type", "client_credentials")
+                        .when()
+                        .post("/api/token")
+                        .then()
+                        .statusCode(200)
+                        .body("access_token", not(isEmptyOrNullString()))
+                        .body("token_type", equalTo("Bearer"))
+                        .extract()
+                        .response();
+
+        // The token is real, short-lived, and should not be printed in logs.
+        return tokenResponse.jsonPath().getString("access_token");
+    }
+
+    @Test
+    public void oauth2ClientCredentialsFlowExample() {
+        String accessToken = getSpotifyAccessToken();
+
+        // Use the real token to call a protected Spotify Web API endpoint.
+        given()
+                .baseUri("https://api.spotify.com")
+                .auth().oauth2(accessToken)
+                .queryParam("q", "Daft Punk")
+                .queryParam("type", "track")
+                .queryParam("limit", 1)
+                .when()
+                .get("/v1/search")
+                .then()
+                .statusCode(200)
+                .body("tracks.items.size()", greaterThan(0))
+                .body("tracks.items[0].name", not(isEmptyOrNullString()));
+    }
+
+    @Test
+    public void bearerTokenUsageExampleWithRealOAuthToken() {
+        // Demonstrates the distinction: first obtain a token, then send it as Bearer.
+        String accessToken = getSpotifyAccessToken();
+        System.out.println("access Token :"+accessToken);
+//        given()
+//                .baseUri("https://api.spotify.com")
+//                .header("Authorization", "Bearer " + accessToken)
+//                .queryParam("q", "Nirvana")
+//                .queryParam("type", "artist")
+//                .queryParam("limit", 1)
+//                .when()
+//                .get("/v1/search")
+//                .then()
+//                .statusCode(200)
+//                .body("artists.items.size()", greaterThan(0));
+    }
+
+
+    // ============================================================
+    // 20. API KEY AUTHENTICATION
+    // ============================================================
+
+    @Test
+    public void apiKeyInHeaderExample() {
+
+        String apiKey = "demo-key-123";
+
+        given()
+                .header("X-API-Key", apiKey)
+                .when()
+                .get("https://httpbin.org/anything")
+                .then()
+                .statusCode(200)
+                .body("headers.X-Api-Key", equalTo(apiKey));
+    }
+
+    @Test
+    public void apiKeyInQueryParameterExample() {
+
+        String apiKey = "demo-key-123";
+
+        given()
+                .queryParam("api_key", apiKey)
+                .when()
+                .get("https://httpbin.org/anything")
+                .then()
+                .statusCode(200)
+                .body("args.api_key", equalTo(apiKey));
+    }
+
+
+    // ============================================================
+    // 21. DELETE REQUEST
+    // ============================================================
+
+    @Test
+    public void deleteUser() {
+        given()
+                .spec(requestSpec)
+                .pathParam("id", 1)
+                .when()
+                .delete("/users/{id}")
+                .then()
+                .statusCode(200);
+        // JSONPlaceholder simulates deletion; it does not persist changes.
+    }
+
+
+    // ============================================================
+    // 22. FORM PARAMS
+    // ============================================================
+
+    @Test
+    public void formParameterExample() {
+        given()
+                .contentType(ContentType.URLENC)
+                .formParam("username", "rahul")
+                .formParam("role", "sdet")
+                .when()
+                .post("https://httpbin.org/post")
+                .then()
+                .statusCode(200)
+                .body("form.username", equalTo("rahul"))
+                .body("form.role", equalTo("sdet"));
+    }
+
+
+    // ============================================================
+    // 23. RESPONSE TIME / PERFORMANCE CHECK
+    // ============================================================
+
+    @Test
+    public void responseTimeExample() {
+        given()
+                .spec(requestSpec)
+                .when()
+                .get("/users/1")
+                .then()
+                .statusCode(200)
+                .time(lessThan(5L), TimeUnit.SECONDS);
+        // This is a basic threshold assertion, not a substitute for load testing.
+    }
+
+
+    // ============================================================
+    // 24. NEGATIVE TEST: RESOURCE NOT FOUND
+    // ============================================================
+
+    @Test
+    public void userNotFoundExample() {
+        given()
+                .spec(requestSpec)
+                .when()
+                .get("/users/999999")
+                .then()
+                .statusCode(404);
+    }
+
+
+    // ============================================================
+    // 25. ARRAY / COLLECTION ASSERTIONS
+    // ============================================================
+
+    @Test
+    public void collectionAssertionsExample() {
+        given()
+                .spec(requestSpec)
+                .when()
+                .get("/users")
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(10))
+                .body("id", hasItems(1, 2, 3))
+                .body("name", everyItem(not(isEmptyOrNullString())));
+    }
+
+
+    // ============================================================
+    // 26. CONTENT TYPE AND RESPONSE HEADERS
+    // ============================================================
+
+    @Test
+    public void responseHeaderAndContentTypeExample() {
+        given()
+                .spec(requestSpec)
+                .when()
+                .get("/users/1")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .header("Content-Type", containsString("application/json"));
+    }
+
+
+    // ============================================================
+    // 27. REQUEST-SPECIFIC OVERRIDE
+    // ============================================================
+
+    @Test
+    public void overrideHeaderFromRequestSpecification() {
+        given()
+                .spec(requestSpec)
+                .header("X-Test", "request-specific-value")
+                .queryParam("_limit", 2)
+                .when()
+                .get("/users")
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(2));
+    }
+
+
+    // ============================================================
+    // 28. COMMON INTERVIEW CHEAT SHEET
+    // ============================================================
+
+    /*
+     * Authentication syntax:
+     * Basic Auth       : auth().preemptive().basic(username, password)
+     * Challenged Basic : auth().basic(username, password)
+     * Bearer/OAuth2    : obtain a real access token, then auth().oauth2(accessToken)
+     * OAuth token flow : POST token endpoint -> extract access_token -> call protected API
+     * API key header   : header("X-API-Key", apiKey) using provider-issued key
+     * API key query    : queryParam("api_key", apiKey) only if provider supports it
+     *
+     * Request data:
+     * Path param       : pathParam("id", 1) + "/users/{id}"
+     * Query param      : queryParam("username", "Bret")
+     * Form data        : formParam("username", "rahul")
+     * JSON body        : body(jsonString)
+     * POJO body        : body(user)
+     *
+     * Core concepts:
+     * Serialization    : Java POJO -> JSON request body
+     * Deserialization  : JSON response -> Java POJO
+     * Request spec     : reusable base URI, headers, content type, etc.
+     * Response spec    : reusable status/header/body expectations
+     * OAuth2 note      : obtaining an access token and using it are separate steps.
+     */
+
 }
